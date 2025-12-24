@@ -308,16 +308,7 @@ export class FigmaMCPServer {
       return client.getPublishedVariables({ fileKey: args['fileKey'] as string });
     }
 
-    if (name === 'figma_post_variables') {
-      const client = this.clientFactory.createVariablesClient();
-      return client.postVariables({
-        fileKey: args['fileKey'] as string,
-        variableCollections: args['variableCollections'] as any,
-        variableModes: args['variableModes'] as any,
-        variables: args['variables'] as any,
-        variableModeValues: args['variableModeValues'] as any,
-      });
-    }
+    // NOTE: figma_post_variables handler removed due to VS Code MCP extension validation bug
 
     // Webhooks operations
     if (name === 'figma_get_webhooks') {

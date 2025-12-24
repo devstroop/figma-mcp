@@ -532,36 +532,9 @@ export function createToolDefinitions(): ToolDefinition[] {
         required: ['fileKey'],
       },
     },
-    {
-      name: 'figma_post_variables',
-      description: 'Create, update, or delete variables in a file (Enterprise only).',
-      inputSchema: {
-        type: 'object',
-        properties: {
-          fileKey: {
-            type: 'string',
-            description: 'The key of the Figma file',
-          },
-          variableCollections: {
-            type: 'array',
-            description: 'Variable collection operations',
-          },
-          variableModes: {
-            type: 'array',
-            description: 'Variable mode operations',
-          },
-          variables: {
-            type: 'array',
-            description: 'Variable operations',
-          },
-          variableModeValues: {
-            type: 'array',
-            description: 'Variable mode value assignments',
-          },
-        },
-        required: ['fileKey'],
-      },
-    },
+    // NOTE: figma_post_variables removed due to VS Code MCP extension validation bug
+    // The tool schema is valid but the extension incorrectly reports "array type must have items"
+    // Re-add when VS Code MCP extension is fixed
 
     // ==================== Webhooks Tools ====================
     {

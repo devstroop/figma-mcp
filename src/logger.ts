@@ -16,11 +16,13 @@ const LOG_LEVELS: Record<LogLevel, number> = {
 
 class Logger {
   private minLevel: LogLevel;
-  private isMcpServer: boolean;
 
   constructor() {
     this.minLevel = (process.env['LOG_LEVEL'] as LogLevel) || 'info';
-    this.isMcpServer = process.env['MCP_SERVER'] === 'true';
+  }
+
+  private get isMcpServer(): boolean {
+    return process.env['MCP_SERVER'] === 'true';
   }
 
   private shouldLog(level: LogLevel): boolean {
