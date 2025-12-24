@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body {
+      font-family: Inter, sans-serif;
+      padding: 16px;
+      margin: 0;
+      background: #2c2c2c;
+      color: #fff;
+    }
+    h2 { margin: 0 0 16px 0; font-size: 14px; font-weight: 600; }
+    .status {
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+      font-size: 12px;
+    }
+    .status.connected { background: #1e3a29; border: 1px solid #30a46c; }
+    .status.disconnected { background: #3a1e1e; border: 1px solid #e5484d; }
+    button {
+      width: 100%;
+      padding: 10px;
+      border: none;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      margin-bottom: 8px;
+    }
+    .btn-primary { background: #0d99ff; color: #fff; }
+    .btn-primary:hover { background: #0b87e0; }
+    .btn-secondary { background: #3c3c3c; color: #fff; }
+    .btn-secondary:hover { background: #4a4a4a; }
+    .info { font-size: 11px; color: #888; margin-top: 12px; }
+  </style>
+</head>
+<body>
+  <h2>🔗 MCP Bridge</h2>
+  <div id="status" class="status disconnected">
+    ⏹ Disconnected
+  </div>
+  <button id="connectBtn" class="btn-primary" onclick="connect()">
+    Connect to MCP
+  </button>
+  <button id="disconnectBtn" class="btn-secondary" onclick="disconnect()" style="display:none;">
+    Disconnect
+  </button>
+  <div style="margin-bottom: 12px;">
+    <label style="font-size: 11px; color: #aaa;">Bridge URL:</label>
+    <input type="text" id="bridgeUrl" value="http://localhost:3848" 
+           style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #444; background: #333; color: #fff; font-size: 11px; margin-top: 4px; box-sizing: border-box;">
+  </div>
+  <div class="info">
+    Commands will execute automatically when connected.
+  </div>
+  
+  <script>
+    let connected = false;
+    
+    function connect() {
+      const url = document.getElementById('bridgeUrl').value;
+      parent.postMessage({ pluginMessage: { type: 'start', bridgeUrl: url } }, '*');
+      connected = true;
+      updateUI();
+    }
+    
+    function disconnect() {
+      parent.postMessage({ pluginMessage: { type: 'stop' } }, '*');
+      connected = false;
+      updateUI();
+    }
+    
+    function updateUI() {
+      document.getElementById('status').className = 'status ' + (connected ? 'connected' : 'disconnected');
+      document.getElementById('status').textContent = connected ? '🟢 Connected to MCP' : '⏹ Disconnected';
+      document.getElementById('connectBtn').style.display = connected ? 'none' : 'block';
+      document.getElementById('disconnectBtn').style.display = connected ? 'block' : 'none';
+      document.getElementById('bridgeUrl').disabled = connected;
+    }
+  </script>
+</body>
+</html>

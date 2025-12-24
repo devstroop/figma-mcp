@@ -1261,6 +1261,56 @@ export function createToolDefinitions(): ToolDefinition[] {
         required: ['action', 'teamId'],
       },
     },
+
+    // ==================== Bridge Tools ====================
+    // BRIDGE - Command bridge for design modifications
+    {
+      name: 'figma_bridge',
+      description: 'Control the MCP-to-Plugin command bridge. Start/stop the bridge server, queue design modification commands, check status. The bridge enables write operations via a Figma plugin. Actions: start (start bridge server), stop (stop server), status (check server/queue status), queue (add commands), clear (remove pending commands), plugin (get plugin installation instructions).',
+      inputSchema: {
+        type: 'object',
+        properties: {
+          action: {
+            type: 'string',
+            enum: ['start', 'stop', 'status', 'queue', 'clear', 'plugin'],
+            description: 'Action to perform',
+          },
+          port: {
+            type: 'number',
+            description: 'For start: port number (default: 3847)',
+          },
+          fileKey: {
+            type: 'string',
+            description: 'For queue: target file key',
+          },
+          commands: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                type: {
+                  type: 'string',
+                  enum: [
+                    'create_page', 'rename_page', 'delete_page',
+                    'move_node', 'rename_node', 'delete_node',
+                    'create_frame', 'create_component', 'create_style',
+                    'group_nodes', 'ungroup_node', 'set_property', 'batch'
+                  ],
+                  description: 'Command type',
+                },
+                params: {
+                  type: 'object',
+                  description: 'Command parameters',
+                },
+              },
+              required: ['type', 'params'],
+            },
+            description: 'For queue: array of commands to execute',
+          },
+        },
+        required: ['action'],
+      },
+    },
   ];
 }
 

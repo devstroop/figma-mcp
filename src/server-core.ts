@@ -24,6 +24,16 @@ import {
   CodeConnectTool,
   WebhooksTool,
 } from './tools/orchestration/index.js';
+import {
+  startBridgeServer,
+  stopBridgeServer,
+  getBridgePort,
+  queueBatch,
+  getAllCommands,
+  clearCommands,
+  generatePluginPackage,
+  type DesignCommand,
+} from './bridge/command-bridge.js';
 
 // Type adapter to convert MCPResponse to CallToolResult
 function toCallToolResult(response: MCPResponse): CallToolResult {
@@ -558,6 +568,150 @@ export class FigmaMCPServer {
         description: args['description'] as string | undefined,
         webhookId: args['webhookId'] as string | undefined,
       });
+    }
+
+    // Bridge operations - for design modifications via plugin
+    if (name === 'figma_bridge') {
+      const action = args['action'] as string;
+      
+      if (action === 'start') {
+        const port = args['port'] as number | undefined;
+        try {
+          const actualPort = await startBridgeServer(port);
+          return ResponseFormatter.formatSuccess({
+            action: 'start',
+            status: 'running',
+            port: actualPort,
+            bridgeUrl: `http://localhost:${actualPort}`,
+            nextSteps: [
+              '1. Install the Figma plugin (use action: "plugin" to get instructions)',
+              '2. Open your Figma file',
+              '3. Run the plugin and click "Connect to MCP"',
+              '4. Use action: "queue" to send design commands'
+            ]
+          }, `Bridge server started on port ${actualPort}`);
+        } catch (error) {
+          return ResponseFormatter.formatError(
+            `Failed to start bridge server: ${error instanceof Error ? error.message : error}`
+          );
+        }
+      }
+      
+      if (action === 'stop') {
+        stopBridgeServer();
+        return ResponseFormatter.formatSuccess({
+          action: 'stop',
+          status: 'stopped'
+        }, 'Bridge server stopped');
+      }
+      
+      if (action === 'status') {
+        const port = getBridgePort();
+        const queue = getAllCommands();
+        return ResponseFormatter.formatSuccess({
+          action: 'status',
+          server: {
+            running: port !== null,
+            port: port,
+            bridgeUrl: port ? `http://localhost:${port}` : null
+          },
+          queue: {
+            fileKey: queue.fileKey,
+            total: queue.commands.length,
+            pending: queue.commands.filter(c => c.status === 'pending').length,
+            completed: queue.commands.filter(c => c.status === 'completed').length,
+            failed: queue.commands.filter(c => c.status === 'failed').length
+          },
+          commands: queue.commands.map(c => ({
+            id: c.id,
+            type: c.type,
+            status: c.status,
+            error: c.error
+          }))
+        }, 'Bridge status retrieved');
+      }
+      
+      if (action === 'queue') {
+        const fileKey = args['fileKey'] as string;
+        const commands = args['commands'] as Array<{ type: string; params: Record<string, unknown> }>;
+        
+        if (!fileKey) {
+          return ResponseFormatter.formatError('fileKey is required for queue action');
+        }
+        if (!commands || commands.length === 0) {
+          return ResponseFormatter.formatError('commands array is required and cannot be empty');
+        }
+        
+        const port = getBridgePort();
+        if (!port) {
+          return ResponseFormatter.formatError('Bridge server not running. Start it first with action: "start"');
+        }
+        
+        const queued = queueBatch(fileKey, commands as Array<Omit<DesignCommand, 'id' | 'status' | 'createdAt'>>);
+        
+        return ResponseFormatter.formatSuccess({
+          action: 'queue',
+          fileKey,
+          queuedCount: queued.length,
+          commands: queued.map(c => ({
+            id: c.id,
+            type: c.type,
+            status: c.status
+          }))
+        }, `Queued ${queued.length} commands. They will execute when the Figma plugin is connected.`);
+      }
+      
+      if (action === 'clear') {
+        clearCommands();
+        return ResponseFormatter.formatSuccess({
+          action: 'clear'
+        }, 'Command queue cleared');
+      }
+      
+      if (action === 'plugin') {
+        const port = getBridgePort() || 3847;
+        const plugin = generatePluginPackage(port);
+        
+        return ResponseFormatter.formatSuccess({
+          action: 'plugin',
+          instructions: [
+            '=== FIGMA MCP BRIDGE PLUGIN INSTALLATION ===',
+            '',
+            '1. In Figma, go to Plugins > Development > New Plugin',
+            '2. Choose "Figma Design" and click "Next"',
+            '3. Name it "Figma MCP Bridge" and click "Save as"',
+            '4. Choose a folder to save the plugin',
+            '',
+            '5. Replace the contents of manifest.json with:',
+            '---MANIFEST_START---',
+            plugin.manifest,
+            '---MANIFEST_END---',
+            '',
+            '6. Replace the contents of code.js with:',
+            '---CODE_START---',
+            plugin.code,
+            '---CODE_END---',
+            '',
+            '7. Create ui.html with:',
+            '---UI_START---',
+            plugin.ui,
+            '---UI_END---',
+            '',
+            '8. Run the plugin from Plugins > Development > Figma MCP Bridge',
+            '9. Click "Connect to MCP" in the plugin UI',
+            '',
+            `Bridge URL: http://localhost:${port}`
+          ].join('\n'),
+          files: {
+            'manifest.json': plugin.manifest,
+            'code.js': plugin.code,
+            'ui.html': plugin.ui
+          },
+          bridgeUrl: `http://localhost:${port}`
+        }, 'Plugin installation instructions generated');
+      }
+      
+      return ResponseFormatter.formatError(`Unknown bridge action: ${action}`);
     }
 
     // Unknown tool
